@@ -75,7 +75,7 @@ export default function Preview({ xml }: { xml: string }) {
   return (
     <div className="space-y-2">
       <div className="flex min-h-5 items-center justify-between text-xs text-slate-500">
-        <span>Rendered with the PreTeXt stylesheets and Runestone.</span>
+        <span>Rendered with the PreTeXt styles and Javascript.</span>
         {(rendering || supported === null) && <span>Rendering…</span>}
       </div>
       {shownError && (

@@ -257,7 +257,8 @@ export default function SimplePreview({ xml }: { xml: string }) {
   return (
     <div className="space-y-3">
       <p className="text-xs text-slate-500">
-        (Approximate preview without interactivity or math rendering)
+        Simple preview without interactivity or math rendering. Try using
+        a Chromium-based browser (Chrome, Edge) for improved previews.
       </p>
       <div className="space-y-3 text-sm leading-relaxed">{children(root)}</div>
     </div>

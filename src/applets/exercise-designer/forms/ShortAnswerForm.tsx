@@ -7,8 +7,8 @@ export default function ShortAnswerForm(props: FormProps<ShortAnswer>) {
   return (
     <Section title="Response">
       <p className="text-sm text-slate-600">
-        Readers type a free response. It is graded by a person, so the text box appears only on a capable server such
-        as Runestone.
+        Readers type a free response. It is graded by a person, so the text box appears only on
+        compatible servers.
       </p>
       <Checkbox
         label="Allow a file upload with the answer"
