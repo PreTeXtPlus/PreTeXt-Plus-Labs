@@ -12,11 +12,12 @@ import {
 import { BLOCK_START, FILLIN_RE } from './serialize.ts'
 
 const EXERCISE_LIKE = ['exercise', 'project', 'activity', 'exploration', 'investigation']
-const COMMON_TAGS = ['title', 'statement', 'hint', 'answer', 'solution']
+const COMMON_TAGS = ['title', 'idx', 'statement', 'hint', 'answer', 'solution']
 
 const elements = (node: Element, tag?: string) =>
   Array.from(node.children).filter((c) => !tag || c.tagName === tag)
 const child = (node: Element, tag: string) => elements(node, tag)[0] as Element | undefined
+const yes = (node: Element | undefined, attr: string) => node?.getAttribute(attr) === 'yes'
 
 /** Remove surrounding blank lines and the indentation common to the content's lines. */
 function dedent(s: string) {
@@ -28,10 +29,8 @@ function dedent(s: string) {
   return lines.map((l, i) => (i === 0 && measured !== lines ? l : l.slice(n))).join('\n')
 }
 
-const serializer = () => new XMLSerializer()
-
 function inner(node: Element, skip: string[] = []) {
-  const s = serializer()
+  const s = new XMLSerializer()
   return dedent(
     Array.from(node.childNodes)
       .filter((n) => !(n.nodeType === 1 && skip.includes((n as Element).tagName)))
@@ -54,6 +53,22 @@ function innerMarkup(node: Element | undefined, skip: string[] = []) {
 
 const codeText = (node: Element | undefined) => (node ? dedent(node.textContent ?? '') : '')
 
+/** A Parsons block (or one of its choices): code lines joined, or markup. */
+function blockContent(node: Element) {
+  const lines = elements(node, 'cline')
+  return lines.length ? lines.map((c) => c.textContent ?? '').join('\n') : innerMarkup(node)
+}
+
+/** A horizontal Parsons block's content, unwrapping a lone <c> or <m>. */
+function inlineBlockContent(node: Element) {
+  const kids = elements(node)
+  const onlyChild =
+    kids.length === 1 &&
+    Array.from(node.childNodes).every((n) => n === kids[0] || (n.nodeType === 3 && !n.textContent!.trim()))
+  if (onlyChild && (kids[0].tagName === 'c' || kids[0].tagName === 'm')) return kids[0].textContent?.trim() ?? ''
+  return inner(node)
+}
+
 /** Rebuild a <cline> as text, keeping its <area> tags. */
 function clineWithAreas(cline: Element) {
   return Array.from(cline.childNodes)
@@ -68,13 +83,13 @@ function clineWithAreas(cline: Element) {
 }
 
 function parseTest(test: Element): FillInTest {
-  const t = { ...emptyTest(), id: newId(), correct: test.getAttribute('correct') === 'yes' }
+  const t = { ...emptyTest(), id: newId(), correct: yes(test, 'correct') }
   const num = child(test, 'numcmp')
   const str = child(test, 'strcmp')
   if (num) {
     Object.assign(t, {
       comparison: 'numcmp',
-      useAnswer: num.getAttribute('use-answer') === 'yes',
+      useAnswer: yes(num, 'use-answer'),
       value: num.getAttribute('value') ?? '',
       tolerance: num.getAttribute('tolerance') ?? '',
       min: num.getAttribute('min') ?? '',
@@ -83,10 +98,10 @@ function parseTest(test: Element): FillInTest {
   } else if (str) {
     Object.assign(t, {
       comparison: 'strcmp',
-      useAnswer: str.getAttribute('use-answer') === 'yes',
+      useAnswer: yes(str, 'use-answer'),
       pattern: str.textContent ?? '',
       caseInsensitive: str.getAttribute('case') === 'insensitive',
-      literal: str.getAttribute('literal') === 'yes',
+      literal: yes(str, 'literal'),
       strip: str.getAttribute('strip') !== 'no',
     })
   }
@@ -97,8 +112,10 @@ function parseTest(test: Element): FillInTest {
 function detectKind(ex: Element): Body['kind'] {
   if (child(ex, 'statement')?.hasAttribute('correct')) return 'truefalse'
   if (child(ex, 'choices')) return 'multiplechoice'
-  if (child(ex, 'blocks')) return 'parsons'
-  if (child(ex, 'matches') || child(ex, 'cardsort')) return 'matching'
+  const blocks = child(ex, 'blocks')
+  if (blocks) return blocks.getAttribute('layout') === 'horizontal' ? 'horizontalparsons' : 'parsons'
+  if (child(ex, 'cardsort') || child(ex, 'matches')) return 'cardsort'
+  if (child(ex, 'matching')) return 'matching'
   if (child(ex, 'areas')) return 'clickable'
   if (child(ex, 'evaluation') || child(ex, 'statement')?.getElementsByTagName('fillin').length) return 'fillin'
   if (child(ex, 'program')) return 'coding'
@@ -112,7 +129,7 @@ function parseBody(ex: Element, kind: Body['kind'], warn: (msg: string) => void)
       return {
         body: {
           kind,
-          correct: child(ex, 'statement')!.getAttribute('correct') === 'yes',
+          correct: yes(child(ex, 'statement'), 'correct'),
           feedback: innerMarkup(child(ex, 'feedback')),
         },
         tags: ['feedback'],
@@ -122,12 +139,14 @@ function parseBody(ex: Element, kind: Body['kind'], warn: (msg: string) => void)
       return {
         body: {
           kind,
-          randomize: choices.getAttribute('randomize') === 'yes',
+          randomize: yes(choices, 'randomize'),
+          multipleCorrect: yes(choices, 'multiple-correct'),
+          cols: choices.getAttribute('cols') ?? '',
           choices: elements(choices, 'choice').map((c) => {
             const statement = child(c, 'statement')
             return {
               id: newId(),
-              correct: c.getAttribute('correct') === 'yes',
+              correct: yes(c, 'correct'),
               statement: statement ? innerMarkup(statement) : innerMarkup(c, ['feedback']),
               feedback: innerMarkup(child(c, 'feedback')),
             }
@@ -138,61 +157,103 @@ function parseBody(ex: Element, kind: Body['kind'], warn: (msg: string) => void)
     }
     case 'parsons': {
       const blocks = child(ex, 'blocks')!
-      const language = ex.getAttribute('language') ?? 'natural'
-      const numbered = ex.getAttribute('numbered')
-      let warnedChoices = false
+      const numbered = blocks.getAttribute('numbered') ?? ex.getAttribute('numbered')
+      const parsed = elements(blocks, 'block').map((block) => {
+        const choices = elements(block, 'choice')
+        const correct = choices.find((c) => yes(c, 'correct')) ?? choices[0]
+        return {
+          id: newId(),
+          distractor: block.getAttribute('correct') === 'no',
+          content: blockContent(correct ?? block),
+          alternatives: choices.filter((c) => c !== correct).map((c) => ({ id: newId(), content: blockContent(c) })),
+          name: block.getAttribute('name') ?? '',
+          depends: (block.getAttribute('depends') ?? '').split(/\s+/).filter(Boolean),
+        }
+      })
       return {
         body: {
           ...defaults.parsons,
-          language,
-          layout: blocks.getAttribute('layout') === 'horizontal' ? 'horizontal' : 'vertical',
+          language: ex.getAttribute('language') ?? 'natural',
           numbered: numbered === 'left' || numbered === 'right' ? numbered : 'no',
           indentation: ex.getAttribute('indentation') === 'hide' ? 'hide' : 'show',
-          adaptive: ex.getAttribute('adaptive') === 'yes',
-          randomize: blocks.getAttribute('randomize') === 'yes',
-          blocks: elements(blocks, 'block').map((block) => {
-            let source = block
-            const choices = elements(block, 'choice')
-            if (choices.length) {
-              if (!warnedChoices) warn('Blocks with <choice> alternatives are not supported; kept the correct choice.')
-              warnedChoices = true
-              source = choices.find((c) => c.getAttribute('correct') === 'yes') ?? choices[0]
-            }
-            const clines = elements(source, 'cline')
-            return {
-              id: newId(),
-              distractor: block.getAttribute('correct') === 'no',
-              content: clines.length ? clines.map((c) => c.textContent ?? '').join('\n') : innerMarkup(source),
-            }
-          }),
+          adaptive: yes(ex, 'adaptive'),
+          shuffle: blocks.getAttribute('randomize') !== 'no',
+          partialOrder: parsed.some((b) => b.name || b.depends.length),
+          blocks: parsed,
         },
         tags: ['blocks'],
       }
     }
-    case 'matching': {
-      const matches = child(ex, 'matches') ?? child(ex, 'cardsort')!
+    case 'horizontalparsons': {
+      const blocks = child(ex, 'blocks')!
+      const all = elements(blocks, 'block')
+      const byId = new Map(all.filter((b) => b.hasAttribute('xml:id')).map((b) => [b.getAttribute('xml:id')!, b]))
       return {
         body: {
           kind,
-          matches: elements(matches, 'match').map((m) => ({
-            id: newId(),
-            premise: innerMarkup(child(m, 'premise')),
-            response: innerMarkup(child(m, 'response')),
-          })),
-          feedback: innerMarkup(child(ex, 'feedback') ?? child(matches, 'feedback')),
+          language: ex.getAttribute('language') ?? 'natural',
+          randomize: blocks.getAttribute('randomize') !== 'no',
+          reuse: yes(blocks, 'reuse'),
+          blocks: all.map((block) => {
+            const ref = block.getAttribute('ref')
+            const source = (ref && byId.get(ref)) || block
+            return { id: newId(), distractor: block.getAttribute('correct') === 'no', content: inlineBlockContent(source) }
+          }),
+          tests: codeText(child(ex, 'tests')),
+          database: ex.getAttribute('database') ?? '',
         },
-        tags: ['matches', 'cardsort', 'feedback'],
+        tags: ['blocks', 'tests'],
+      }
+    }
+    case 'cardsort': {
+      const container = child(ex, 'cardsort') ?? child(ex, 'matches')!
+      return {
+        body: {
+          kind,
+          groups: elements(container, 'match').map((m) => ({
+            id: newId(),
+            response: innerMarkup(child(m, 'response')),
+            premises: elements(m, 'premise').map((p) => ({ id: newId(), text: innerMarkup(p) })),
+          })),
+          feedback: innerMarkup(child(ex, 'feedback') ?? child(container, 'feedback')),
+        },
+        tags: ['cardsort', 'matches', 'feedback'],
+      }
+    }
+    case 'matching': {
+      const container = child(ex, 'matching')!
+      const responses = elements(container, 'response').map((r) => ({
+        xmlId: r.getAttribute('xml:id') ?? '',
+        response: { id: newId(), text: innerMarkup(r) },
+      }))
+      const idFor = new Map(responses.map((r) => [r.xmlId, r.response.id]))
+      return {
+        body: {
+          kind,
+          responses: responses.map((r) => r.response),
+          premises: elements(container, 'premise').map((p) => {
+            const refs = (p.getAttribute('ref') ?? '').split(/\s+/).filter(Boolean)
+            if (refs.some((ref) => !idFor.has(ref))) warn('Some premises refer to responses that do not exist.')
+            return {
+              id: newId(),
+              text: innerMarkup(p),
+              refs: refs.map((ref) => idFor.get(ref)).filter((id): id is string => !!id),
+            }
+          }),
+          feedback: innerMarkup(child(ex, 'feedback')),
+        },
+        tags: ['matching', 'feedback'],
       }
     }
     case 'clickable': {
       const areas = child(ex, 'areas')!
-      const clines = elements(areas, 'cline')
+      const lines = elements(areas, 'cline')
       return {
         body: {
           kind,
-          code: clines.length > 0,
+          code: lines.length > 0,
           language: areas.getAttribute('language') ?? '',
-          content: clines.length ? clines.map(clineWithAreas).join('\n') : innerMarkup(areas),
+          content: lines.length ? lines.map(clineWithAreas).join('\n') : innerMarkup(areas),
           feedback: innerMarkup(child(ex, 'feedback')),
         },
         tags: ['areas', 'feedback'],
@@ -237,7 +298,7 @@ function parseBody(ex: Element, kind: Body['kind'], warn: (msg: string) => void)
       }
     }
     case 'shortanswer':
-      return { body: { kind, attachment: ex.getAttribute('attachment') === 'yes' }, tags: ['response'] }
+      return { body: { kind, attachment: yes(ex, 'attachment') }, tags: ['response'] }
   }
 }
 
@@ -269,6 +330,9 @@ export function fromXml(src: string): { exercise: Exercise; warnings: string[] }
     ...emptyCommon(),
     title: child(ex, 'title') ? inner(child(ex, 'title')!) : '',
     label: ex.getAttribute('label') ?? '',
+    index: elements(ex, 'idx')
+      .map((idx) => inner(idx).replace(/\s+/g, ' '))
+      .join('\n'),
     statement: statementText,
     hints: elements(ex, 'hint').map((h) => ({ id: newId(), text: innerMarkup(h) })),
     answer: innerMarkup(answers[0]),

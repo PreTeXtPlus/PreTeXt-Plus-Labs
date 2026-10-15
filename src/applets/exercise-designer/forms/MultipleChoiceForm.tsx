@@ -1,6 +1,6 @@
 import ListEditor from '../components/ListEditor.tsx'
 import MarkupField from '../components/MarkupField.tsx'
-import { Checkbox, Section } from '../components/fields.tsx'
+import { Checkbox, Section, TextInput } from '../components/fields.tsx'
 import { emptyChoice, type MultipleChoice } from '../model.ts'
 import { patcher, type FormProps } from './types.ts'
 
@@ -10,7 +10,21 @@ export default function MultipleChoiceForm(props: FormProps<MultipleChoice>) {
   const correctCount = body.choices.filter((c) => c.correct).length
   return (
     <Section title="Choices">
-      <Checkbox label="Shuffle choices for each reader" checked={body.randomize} onChange={(randomize) => set({ randomize })} />
+      <div className="flex flex-wrap items-end gap-4">
+        <Checkbox label="Shuffle choices for each reader" checked={body.randomize} onChange={(randomize) => set({ randomize })} />
+        <Checkbox
+          label="Always use checkboxes"
+          checked={body.multipleCorrect}
+          onChange={(multipleCorrect) => set({ multipleCorrect })}
+        />
+        <div className="w-24">
+          <TextInput label="Columns" mono value={body.cols} placeholder="1" onChange={(cols) => set({ cols })} />
+        </div>
+      </div>
+      <p className="text-sm text-slate-600">
+        Readers get radio buttons when exactly one choice is correct, and checkboxes otherwise. "Always use checkboxes"
+        hides how many answers are correct.
+      </p>
       {correctCount === 0 && <p className="text-sm text-amber-700">Mark at least one choice as correct.</p>}
       <ListEditor
         items={body.choices}

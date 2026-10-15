@@ -1,4 +1,4 @@
-import type { Blank, Body, Common, Exercise, FillInTest } from './model.ts'
+import type { Blank, Block, Body, Common, Exercise, FillInTest, Matching } from './model.ts'
 
 type Attrs = Record<string, string | false | undefined>
 interface XElement {
@@ -37,8 +37,9 @@ function markup(s: string): XNode[] {
 }
 
 const optMarkup = (tag: string, s: string) => (s.trim() ? el(tag, {}, ...markup(s)) : null)
-const inline = (tag: string, s: string) => el(tag, {}, raw(s.trim()))
+const inline = (tag: string, s: string, attrs: Attrs = {}) => el(tag, attrs, raw(s.trim()))
 const codeLines = (s: string) => s.replace(/\s+$/, '').split('\n')
+const clines = (s: string) => codeLines(s).map((line) => el('cline', {}, raw(escapeText(line))))
 
 export const FILLIN_RE = /<fillin\b[^>]*?\/>/g
 const AREA_TAG_RE = /(<area\b[^>]*>|<\/area>)/
@@ -51,6 +52,45 @@ const escapeExceptAreas = (line: string) =>
     .join('')
 
 const nonEmpty = (s: string) => s.trim() || undefined
+
+/**
+ * The `order` attribute values for n items: the order a static (print) version
+ * shows them in. A fixed, non-identity permutation, so print never shows the solution.
+ */
+export function staticOrder(n: number): number[] {
+  const positions = Array.from({ length: n }, (_, i) => i)
+    .map((i) => ({ i, k: Math.sin((i + 1) * 12.9898 + n * 78.233) }))
+    .sort((a, b) => a.k - b.k)
+    .map((x) => x.i)
+  const isIdentity = positions.every((p, i) => p === i)
+  const shown = isIdentity && n > 1 ? [...positions.slice(1), positions[0]] : positions
+  const order = new Array<number>(n)
+  shown.forEach((item, position) => (order[item] = position + 1))
+  return order
+}
+
+export const slug = (s: string) =>
+  s
+    .replace(/<[^>]+>/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 24)
+
+/** XML ids for matching responses, unique and derived from the exercise label and response text. */
+export function responseIds(b: Matching, label: string): Map<string, string> {
+  const prefix = slug(label) || 'matching'
+  const used = new Set<string>()
+  return new Map(
+    b.responses.map((r, i) => {
+      const base = `${prefix}-${slug(r.text) || i + 1}`
+      let id = base
+      for (let n = 2; used.has(id); n++) id = `${base}-${n}`
+      used.add(id)
+      return [r.id, id]
+    }),
+  )
+}
 
 function fillinTag(blank: Blank | undefined) {
   if (!blank) return '<fillin/>'
@@ -88,7 +128,32 @@ function testNode(t: FillInTest): XElement {
   return el('test', { correct: t.correct && 'yes' }, cmp, optMarkup('feedback', t.feedback))
 }
 
-function bodyParts(b: Body): { attrs: Attrs; afterStatement: (XNode | null)[] } {
+function parsonsBlock(block: Block, order: number, isCode: boolean, partialOrder: boolean) {
+  const content = (s: string) => (isCode ? clines(s) : markup(s))
+  const attrs: Attrs = {
+    order: String(order),
+    correct: block.distractor && 'no',
+    name: partialOrder && nonEmpty(block.name),
+    depends: partialOrder && block.depends.length > 0 && block.depends.join(' '),
+  }
+  if (!block.alternatives.length) return el('block', attrs, ...content(block.content))
+  return el(
+    'block',
+    attrs,
+    el('choice', { correct: 'yes' }, ...content(block.content)),
+    ...block.alternatives.map((alt) => el('choice', {}, ...content(alt.content))),
+  )
+}
+
+/** Horizontal Parsons blocks are inline: math in <m>, code in <c>, natural language as is. */
+export function inlineBlockContent(language: string, content: string) {
+  const t = content.trim()
+  if (language === 'math') return `<m>${escapeText(t)}</m>`
+  if (language !== 'natural') return `<c>${escapeText(t)}</c>`
+  return t
+}
+
+function bodyParts(b: Body, c: Common): { attrs: Attrs; afterStatement: (XNode | null)[] } {
   switch (b.kind) {
     case 'truefalse':
       return { attrs: {}, afterStatement: [optMarkup('feedback', b.feedback)] }
@@ -98,13 +163,17 @@ function bodyParts(b: Body): { attrs: Attrs; afterStatement: (XNode | null)[] } 
         afterStatement: [
           el(
             'choices',
-            { randomize: b.randomize && 'yes' },
-            ...b.choices.map((c) =>
+            {
+              randomize: b.randomize && 'yes',
+              'multiple-correct': b.multipleCorrect && 'yes',
+              cols: nonEmpty(b.cols),
+            },
+            ...b.choices.map((ch) =>
               el(
                 'choice',
-                { correct: c.correct && 'yes' },
-                el('statement', {}, ...markup(c.statement)),
-                optMarkup('feedback', c.feedback),
+                { correct: ch.correct && 'yes' },
+                el('statement', {}, ...markup(ch.statement)),
+                optMarkup('feedback', ch.feedback),
               ),
             ),
           ),
@@ -112,43 +181,84 @@ function bodyParts(b: Body): { attrs: Attrs; afterStatement: (XNode | null)[] } 
       }
     case 'parsons': {
       const isCode = b.language !== 'natural'
-      const horizontal = b.layout === 'horizontal'
+      const order = staticOrder(b.blocks.length)
       return {
         attrs: {
-          language: isCode && b.language,
-          numbered: b.numbered !== 'no' && b.numbered,
-          indentation: isCode && b.indentation === 'hide' && 'hide',
+          language: b.language,
+          indentation: isCode && b.indentation,
           adaptive: b.adaptive && 'yes',
         },
         afterStatement: [
           el(
             'blocks',
-            { layout: horizontal && 'horizontal', randomize: horizontal && b.randomize && 'yes' },
-            ...b.blocks.map((block) =>
-              el(
-                'block',
-                { correct: block.distractor && 'no' },
-                ...(isCode
-                  ? codeLines(block.content).map((line) => el('cline', {}, raw(escapeText(line))))
-                  : markup(block.content)),
-              ),
-            ),
+            { numbered: b.numbered !== 'no' && b.numbered, randomize: !b.shuffle && 'no' },
+            ...b.blocks.map((block, i) => parsonsBlock(block, order[i], isCode, b.partialOrder)),
           ),
         ],
       }
     }
-    case 'matching':
+    case 'horizontalparsons': {
+      const order = staticOrder(b.blocks.length)
+      return {
+        attrs: { language: b.language, database: b.language === 'sql' && nonEmpty(b.database) },
+        afterStatement: [
+          el(
+            'blocks',
+            { layout: 'horizontal', randomize: b.randomize ? 'yes' : 'no', reuse: b.reuse && 'yes' },
+            ...b.blocks.map((block, i) =>
+              el(
+                'block',
+                { order: String(order[i]), correct: block.distractor && 'no' },
+                raw(inlineBlockContent(b.language, block.content)),
+              ),
+            ),
+          ),
+          b.tests.trim() ? el('tests', {}, raw(escapeText(b.tests.replace(/\s+$/, '')))) : null,
+        ],
+      }
+    }
+    case 'cardsort': {
+      const order = staticOrder(b.groups.reduce((n, g) => n + g.premises.length, 0))
+      let i = 0
       return {
         attrs: {},
         afterStatement: [
           el(
-            'matches',
+            'cardsort',
             {},
-            ...b.matches.map((m) => el('match', {}, inline('premise', m.premise), inline('response', m.response))),
+            ...b.groups.map((g) =>
+              el(
+                'match',
+                {},
+                ...g.premises.map((p) => inline('premise', p.text, { order: String(order[i++]) })),
+                inline('response', g.response),
+              ),
+            ),
           ),
           optMarkup('feedback', b.feedback),
         ],
       }
+    }
+    case 'matching': {
+      const ids = responseIds(b, c.label)
+      const order = staticOrder(b.responses.length)
+      return {
+        attrs: {},
+        afterStatement: [
+          el(
+            'matching',
+            {},
+            ...b.premises.map((p) =>
+              inline('premise', p.text, {
+                ref: nonEmpty(p.refs.map((id) => ids.get(id)).filter(Boolean).join(' ')),
+              }),
+            ),
+            ...b.responses.map((r, i) => inline('response', r.text, { 'xml:id': ids.get(r.id), order: String(order[i]) })),
+          ),
+          optMarkup('feedback', b.feedback),
+        ],
+      }
+    }
     case 'clickable':
       return {
         attrs: {},
@@ -204,11 +314,15 @@ function statementNode(c: Common, b: Body) {
 }
 
 export function toXml({ common: c, body: b }: Exercise): string {
-  const { attrs, afterStatement } = bodyParts(b)
+  const { attrs, afterStatement } = bodyParts(b, c)
   const root = el(
     'exercise',
     { label: nonEmpty(c.label), ...attrs },
     c.title.trim() ? inline('title', c.title) : null,
+    ...c.index
+      .split('\n')
+      .filter((line) => line.trim())
+      .map((line) => inline('idx', line)),
     statementNode(c, b),
     ...afterStatement,
     ...c.hints.map((h) => optMarkup('hint', h.text)),

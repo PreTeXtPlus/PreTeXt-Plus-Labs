@@ -1,9 +1,11 @@
 import { useMemo, useRef, useState } from 'react'
 import { buttonClass, primaryButtonClass } from './components/fields.tsx'
+import CardsortForm from './forms/CardsortForm.tsx'
 import ClickableForm from './forms/ClickableForm.tsx'
 import CodingForm from './forms/CodingForm.tsx'
 import { FooterFields, HeaderFields } from './forms/CommonFields.tsx'
 import FillInForm from './forms/FillInForm.tsx'
+import HorizontalParsonsForm from './forms/HorizontalParsonsForm.tsx'
 import MatchingForm from './forms/MatchingForm.tsx'
 import MultipleChoiceForm from './forms/MultipleChoiceForm.tsx'
 import ParsonsForm from './forms/ParsonsForm.tsx'
@@ -125,6 +127,10 @@ export default function ExerciseDesigner() {
         return <MultipleChoiceForm body={draft.bodies.multiplechoice} onChange={setBody('multiplechoice')} />
       case 'parsons':
         return <ParsonsForm body={draft.bodies.parsons} onChange={setBody('parsons')} />
+      case 'horizontalparsons':
+        return <HorizontalParsonsForm body={draft.bodies.horizontalparsons} onChange={setBody('horizontalparsons')} />
+      case 'cardsort':
+        return <CardsortForm body={draft.bodies.cardsort} onChange={setBody('cardsort')} />
       case 'matching':
         return <MatchingForm body={draft.bodies.matching} onChange={setBody('matching')} />
       case 'clickable':

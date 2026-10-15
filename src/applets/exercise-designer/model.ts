@@ -2,6 +2,8 @@ export const kinds = [
   'truefalse',
   'multiplechoice',
   'parsons',
+  'horizontalparsons',
+  'cardsort',
   'matching',
   'clickable',
   'fillin',
@@ -15,6 +17,8 @@ export const kindLabels: Record<Kind, string> = {
   truefalse: 'True/False',
   multiplechoice: 'Multiple Choice',
   parsons: 'Parsons',
+  horizontalparsons: 'Horizontal Parsons',
+  cardsort: 'Cardsort',
   matching: 'Matching',
   clickable: 'Clickable Area',
   fillin: 'Fill-in-the-Blanks',
@@ -35,6 +39,8 @@ export interface Hint {
 export interface Common {
   title: string
   label: string
+  /** One <idx> entry per line (markup, so <h> subentries work). */
+  index: string
   statement: string
   hints: Hint[]
   answer: string
@@ -57,7 +63,15 @@ export interface Choice {
 export interface MultipleChoice {
   kind: 'multiplechoice'
   randomize: boolean
+  /** Use checkboxes even when only one choice is correct. */
+  multipleCorrect: boolean
+  cols: string
   choices: Choice[]
+}
+
+export interface Alternative {
+  id: string
+  content: string
 }
 
 export interface Block {
@@ -65,29 +79,75 @@ export interface Block {
   /** Markup for natural language, plain source lines for code. */
   content: string
   distractor: boolean
+  /** Wrong versions of this block, offered alongside it as <choice>s. */
+  alternatives: Alternative[]
+  /** For partial orders: this block's name, and the names of blocks that must come before it. */
+  name: string
+  depends: string[]
 }
 
 export interface Parsons {
   kind: 'parsons'
   /** "natural" or a programming language name. */
   language: string
-  layout: 'vertical' | 'horizontal'
   numbered: 'no' | 'left' | 'right'
   indentation: 'show' | 'hide'
   adaptive: boolean
-  randomize: boolean
+  shuffle: boolean
+  partialOrder: boolean
   blocks: Block[]
 }
 
-export interface Match {
+export interface InlineBlock {
   id: string
-  premise: string
+  content: string
+  distractor: boolean
+}
+
+export interface HorizontalParsons {
+  kind: 'horizontalparsons'
+  /** "natural", "math", or a programming language name. */
+  language: string
+  randomize: boolean
+  reuse: boolean
+  blocks: InlineBlock[]
+  tests: string
+  database: string
+}
+
+export interface Premise {
+  id: string
+  text: string
+}
+
+export interface CardsortGroup {
+  id: string
   response: string
+  premises: Premise[]
+}
+
+export interface Cardsort {
+  kind: 'cardsort'
+  groups: CardsortGroup[]
+  feedback: string
+}
+
+export interface MatchingResponse {
+  id: string
+  text: string
+}
+
+export interface MatchingPremise {
+  id: string
+  text: string
+  /** Ids of the responses this premise matches. */
+  refs: string[]
 }
 
 export interface Matching {
   kind: 'matching'
-  matches: Match[]
+  premises: MatchingPremise[]
+  responses: MatchingResponse[]
   feedback: string
 }
 
@@ -147,6 +207,8 @@ export type Body =
   | TrueFalse
   | MultipleChoice
   | Parsons
+  | HorizontalParsons
+  | Cardsort
   | Matching
   | Clickable
   | FillIn
@@ -163,6 +225,7 @@ export interface Exercise {
 export const emptyCommon = (): Common => ({
   title: '',
   label: '',
+  index: '',
   statement: '',
   hints: [],
   answer: '',
@@ -170,8 +233,19 @@ export const emptyCommon = (): Common => ({
 })
 
 export const emptyChoice = (): Choice => ({ id: newId(), statement: '', feedback: '', correct: false })
-export const emptyBlock = (): Block => ({ id: newId(), content: '', distractor: false })
-export const emptyMatch = (): Match => ({ id: newId(), premise: '', response: '' })
+export const emptyBlock = (): Block => ({
+  id: newId(),
+  content: '',
+  distractor: false,
+  alternatives: [],
+  name: '',
+  depends: [],
+})
+export const emptyInlineBlock = (): InlineBlock => ({ id: newId(), content: '', distractor: false })
+export const emptyPremise = (): Premise => ({ id: newId(), text: '' })
+export const emptyGroup = (): CardsortGroup => ({ id: newId(), response: '', premises: [emptyPremise()] })
+export const emptyMatchingPremise = (): MatchingPremise => ({ id: newId(), text: '', refs: [] })
+export const emptyMatchingResponse = (): MatchingResponse => ({ id: newId(), text: '' })
 
 export const emptyTest = (comparison: FillInTest['comparison'] = 'strcmp'): FillInTest => ({
   id: newId(),
@@ -211,19 +285,36 @@ export const emptyBodies = (): Bodies => ({
   multiplechoice: {
     kind: 'multiplechoice',
     randomize: false,
+    multipleCorrect: false,
+    cols: '',
     choices: [{ ...emptyChoice(), correct: true }, emptyChoice(), emptyChoice()],
   },
   parsons: {
     kind: 'parsons',
     language: 'natural',
-    layout: 'vertical',
     numbered: 'no',
     indentation: 'show',
     adaptive: false,
-    randomize: false,
+    shuffle: true,
+    partialOrder: false,
     blocks: [emptyBlock(), emptyBlock(), emptyBlock()],
   },
-  matching: { kind: 'matching', matches: [emptyMatch(), emptyMatch(), emptyMatch()], feedback: '' },
+  horizontalparsons: {
+    kind: 'horizontalparsons',
+    language: 'natural',
+    randomize: true,
+    reuse: false,
+    blocks: [emptyInlineBlock(), emptyInlineBlock(), emptyInlineBlock()],
+    tests: '',
+    database: '',
+  },
+  cardsort: { kind: 'cardsort', groups: [emptyGroup(), emptyGroup()], feedback: '' },
+  matching: {
+    kind: 'matching',
+    premises: [emptyMatchingPremise(), emptyMatchingPremise()],
+    responses: [emptyMatchingResponse(), emptyMatchingResponse()],
+    feedback: '',
+  },
   clickable: { kind: 'clickable', code: false, language: '', content: '', feedback: '' },
   fillin: { kind: 'fillin', blanks: [] },
   coding: { kind: 'coding', language: 'python', code: '', tests: '' },

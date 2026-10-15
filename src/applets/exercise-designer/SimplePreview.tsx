@@ -77,8 +77,12 @@ function node(n: Node, key: number): ReactNode {
     }
     case 'blocks': {
       const horizontal = e.getAttribute('layout') === 'horizontal'
-      const blocks = elementChildren(e, 'block')
-      const order = horizontal && e.getAttribute('randomize') !== 'yes' ? blocks : shuffled(blocks, (b) => b.textContent ?? '')
+      // A block with <choice>s offers each choice as its own card.
+      const cards = elementChildren(e, 'block').flatMap((b) => {
+        const choices = elementChildren(b, 'choice')
+        return choices.length ? choices : [b]
+      })
+      const order = e.getAttribute('randomize') === 'no' ? cards : shuffled(cards, (b) => b.textContent ?? '')
       return (
         <div key={key} className={horizontal ? 'flex flex-wrap gap-2' : 'space-y-2'}>
           {order.map((b, i) => (
@@ -90,22 +94,24 @@ function node(n: Node, key: number): ReactNode {
       )
     }
     case 'matches':
-    case 'cardsort': {
-      const matches = elementChildren(e, 'match')
+    case 'cardsort':
+    case 'matching': {
+      const premises = Array.from(e.getElementsByTagName('premise'))
+      const responses = Array.from(e.getElementsByTagName('response'))
       const cell = 'rounded-md border border-slate-300 bg-slate-50 px-3 py-1.5'
       return (
         <div key={key} className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            {matches.map((m, i) => (
+            {shuffled(premises, (p) => p.textContent ?? '').map((p, i) => (
               <div key={i} className={cell}>
-                {children(elementChildren(m, 'premise')[0] ?? m)}
+                {children(p)}
               </div>
             ))}
           </div>
           <div className="space-y-2">
-            {shuffled(matches, (m) => m.textContent ?? '').map((m, i) => (
+            {responses.map((r, i) => (
               <div key={i} className={cell}>
-                {children(elementChildren(m, 'response')[0] ?? m)}
+                {children(r)}
               </div>
             ))}
           </div>

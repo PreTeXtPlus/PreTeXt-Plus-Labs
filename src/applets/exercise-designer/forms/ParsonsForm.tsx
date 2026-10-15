@@ -1,17 +1,31 @@
 import ListEditor from '../components/ListEditor.tsx'
 import MarkupField from '../components/MarkupField.tsx'
-import { Checkbox, Field, Section, Select, inputClass } from '../components/fields.tsx'
-import { LANGUAGES, emptyBlock, type Parsons } from '../model.ts'
+import { Checkbox, Field, Section, Select, TextInput, inputClass } from '../components/fields.tsx'
+import { LANGUAGES, emptyBlock, newId, type Block, type Parsons } from '../model.ts'
 import { patcher, type FormProps } from './types.ts'
-
 
 export default function ParsonsForm(props: FormProps<Parsons>) {
   const { body } = props
   const set = patcher(props)
   const isCode = body.language !== 'natural'
+
+  /** Rename a block, keeping other blocks' dependencies on it. */
+  const rename = (block: Block, name: string) =>
+    set({
+      blocks: body.blocks.map((b) =>
+        b.id === block.id
+          ? { ...b, name }
+          : { ...b, depends: b.depends.map((d) => (block.name && d === block.name ? name : d)).filter(Boolean) },
+      ),
+    })
+
+  const contentField = (label: string, value: string, onChange: (value: string) => void) => (
+    <MarkupField label={label} code={isCode} rows={isCode ? 3 : 2} value={value} onChange={onChange} />
+  )
+
   return (
     <Section title="Blocks">
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-3">
         <Field label="Language">
           <input
             list="parsons-languages"
@@ -25,15 +39,6 @@ export default function ParsonsForm(props: FormProps<Parsons>) {
             ))}
           </datalist>
         </Field>
-        <Select
-          label="Layout"
-          value={body.layout}
-          options={[
-            ['vertical', 'Vertical'],
-            ['horizontal', 'Horizontal'],
-          ]}
-          onChange={(layout) => set({ layout })}
-        />
         <Select
           label="Numbered blocks"
           value={body.numbered}
@@ -57,13 +62,18 @@ export default function ParsonsForm(props: FormProps<Parsons>) {
         )}
       </div>
       <div className="flex flex-wrap gap-4">
+        <Checkbox label="Shuffle blocks" checked={body.shuffle} onChange={(shuffle) => set({ shuffle })} />
         <Checkbox label="Adaptive (offer help after wrong attempts)" checked={body.adaptive} onChange={(adaptive) => set({ adaptive })} />
-        {body.layout === 'horizontal' && (
-          <Checkbox label="Shuffle blocks" checked={body.randomize} onChange={(randomize) => set({ randomize })} />
-        )}
+        <Checkbox
+          label="Allow multiple valid orders"
+          checked={body.partialOrder}
+          onChange={(partialOrder) => set({ partialOrder })}
+        />
       </div>
       <p className="text-sm text-slate-600">
-        List the blocks in the correct order. Distractors are left out of the solution and can go anywhere.
+        List the blocks in a correct order. Distractors are left out of the solution and can go anywhere.
+        {body.partialOrder &&
+          ' With multiple valid orders, name the blocks and say which ones each block must come after; any order that respects those dependencies is accepted.'}
       </p>
       <ListEditor
         items={body.blocks}
@@ -71,18 +81,52 @@ export default function ParsonsForm(props: FormProps<Parsons>) {
         create={emptyBlock}
         addLabel="Add block"
         itemTitle={(i) => `Block ${i + 1}`}
-        renderItem={(block, update) => (
-          <>
-            <Checkbox label="Distractor" checked={block.distractor} onChange={(distractor) => update({ distractor })} />
-            <MarkupField
-              label={isCode ? 'Code' : 'Text'}
-              code={isCode}
-              rows={isCode ? 3 : 2}
-              value={block.content}
-              onChange={(content) => update({ content })}
-            />
-          </>
-        )}
+        renderItem={(block, update) => {
+          const others = body.blocks.filter((b) => b.id !== block.id && b.name && !b.distractor)
+          return (
+            <>
+              <Checkbox label="Distractor" checked={block.distractor} onChange={(distractor) => update({ distractor })} />
+              {contentField(isCode ? 'Code' : 'Text', block.content, (content) => update({ content }))}
+              {body.partialOrder && !block.distractor && (
+                <div className="space-y-2">
+                  <div className="w-48">
+                    <TextInput label="Name" mono value={block.name} onChange={(name) => rename(block, name.replace(/\s+/g, ''))} />
+                  </div>
+                  {others.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                      <span className="text-sm font-medium text-slate-700">Comes after:</span>
+                      {others.map((b) => (
+                        <Checkbox
+                          key={b.id}
+                          label={<code>{b.name}</code>}
+                          checked={block.depends.includes(b.name)}
+                          onChange={(on) =>
+                            update({ depends: on ? [...block.depends, b.name] : block.depends.filter((d) => d !== b.name) })
+                          }
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              <details open={block.alternatives.length > 0} className="text-sm">
+                <summary className="cursor-pointer text-slate-600">
+                  Wrong versions of this block ({block.alternatives.length})
+                </summary>
+                <div className="mt-2">
+                  <ListEditor
+                    items={block.alternatives}
+                    onChange={(alternatives) => update({ alternatives })}
+                    create={() => ({ id: newId(), content: '' })}
+                    addLabel="Add wrong version"
+                    itemTitle={(i) => `Wrong version ${i + 1}`}
+                    renderItem={(alt, updateAlt) => contentField(isCode ? 'Code' : 'Text', alt.content, (content) => updateAlt({ content }))}
+                  />
+                </div>
+              </details>
+            </>
+          )
+        }}
       />
     </Section>
   )

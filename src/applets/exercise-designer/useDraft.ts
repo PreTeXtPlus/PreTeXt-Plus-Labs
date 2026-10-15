@@ -8,7 +8,8 @@ export interface Draft {
   bodies: Bodies
 }
 
-const KEY = 'exercise-designer:draft'
+// Bump the version when the model changes shape, so stale drafts are ignored.
+const KEY = 'exercise-designer:draft:v2'
 
 export const emptyDraft = (): Draft => ({ kind: 'multiplechoice', common: emptyCommon(), bodies: emptyBodies() })
 

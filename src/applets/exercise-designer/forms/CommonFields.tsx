@@ -30,6 +30,18 @@ export function HeaderFields({ common, onChange, statementRef }: Props & { state
         />
       </div>
       <MarkupField
+        label="Index entries (optional, one per line)"
+        rows={1}
+        value={common.index}
+        placeholder="vector space"
+        onChange={(index) => onChange({ index })}
+        help={
+          <>
+            Each line becomes an <code>&lt;idx&gt;</code>. Use <code>&lt;h&gt;</code> for subentries.
+          </>
+        }
+      />
+      <MarkupField
         ref={statementRef}
         label="Statement"
         rows={4}

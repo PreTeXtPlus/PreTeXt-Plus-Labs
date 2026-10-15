@@ -1,29 +1,63 @@
 import ListEditor from '../components/ListEditor.tsx'
 import MarkupField from '../components/MarkupField.tsx'
-import { Section, TextInput } from '../components/fields.tsx'
-import { emptyMatch, type Matching } from '../model.ts'
+import { Checkbox, Section, TextInput } from '../components/fields.tsx'
+import { emptyMatchingPremise, emptyMatchingResponse, type Matching } from '../model.ts'
 import { patcher, type FormProps } from './types.ts'
 
 export default function MatchingForm(props: FormProps<Matching>) {
   const { body } = props
   const set = patcher(props)
   return (
-    <Section title="Pairs">
-      <p className="text-sm text-slate-600">Keep premises and responses to short phrases. Readers see the responses shuffled.</p>
-      <ListEditor
-        items={body.matches}
-        onChange={(matches) => set({ matches })}
-        create={emptyMatch}
-        addLabel="Add pair"
-        itemTitle={(i) => `Pair ${i + 1}`}
-        renderItem={(match, update) => (
-          <div className="grid gap-3 sm:grid-cols-2">
-            <TextInput label="Premise" value={match.premise} onChange={(premise) => update({ premise })} />
-            <TextInput label="Response" value={match.response} onChange={(response) => update({ response })} />
-          </div>
-        )}
-      />
-      <MarkupField label="Feedback (optional)" rows={2} value={body.feedback} onChange={(feedback) => set({ feedback })} />
-    </Section>
+    <>
+      <Section title="Responses">
+        <p className="text-sm text-slate-600">
+          Readers connect each premise to every response that applies. A response can match several premises.
+        </p>
+        <ListEditor
+          items={body.responses}
+          onChange={(responses) =>
+            set({
+              responses,
+              premises: body.premises.map((p) => ({ ...p, refs: p.refs.filter((id) => responses.some((r) => r.id === id)) })),
+            })
+          }
+          create={emptyMatchingResponse}
+          addLabel="Add response"
+          itemTitle={(i) => `Response ${i + 1}`}
+          renderItem={(response, update) => (
+            <TextInput label="Response" value={response.text} onChange={(text) => update({ text })} />
+          )}
+        />
+      </Section>
+      <Section title="Premises">
+        <ListEditor
+          items={body.premises}
+          onChange={(premises) => set({ premises })}
+          create={emptyMatchingPremise}
+          addLabel="Add premise"
+          itemTitle={(i) => `Premise ${i + 1}`}
+          renderItem={(premise, update) => (
+            <>
+              <TextInput label="Premise" value={premise.text} onChange={(text) => update({ text })} />
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                <span className="text-sm font-medium text-slate-700">Matches:</span>
+                {body.responses.map((r, i) => (
+                  <Checkbox
+                    key={r.id}
+                    label={r.text || `Response ${i + 1}`}
+                    checked={premise.refs.includes(r.id)}
+                    onChange={(on) =>
+                      update({ refs: on ? [...premise.refs, r.id] : premise.refs.filter((id) => id !== r.id) })
+                    }
+                  />
+                ))}
+              </div>
+              {premise.refs.length === 0 && <p className="text-xs text-amber-700">Pick at least one response.</p>}
+            </>
+          )}
+        />
+        <MarkupField label="Feedback (optional)" rows={2} value={body.feedback} onChange={(feedback) => set({ feedback })} />
+      </Section>
+    </>
   )
 }
