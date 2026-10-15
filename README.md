@@ -11,6 +11,7 @@ npm install
 npm run dev      # start the dev server
 npm run build    # type-check and build to dist/
 npm run lint
+npm test         # run unit tests (Vitest)
 ```
 
 ## Adding an applet
