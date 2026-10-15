@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import { emptyBlock, emptyBodies, emptyCommon, emptyTest, type Body, type BodyOf, type Exercise, type Kind } from './model.ts'
 import { fromXml } from './parse.ts'
+import { samples as exerciseSamples } from './samples.ts'
 import { checkWellFormed, staticOrder, toXml } from './serialize.ts'
 
 /** Replace generated ids so structures can be compared, keeping id references consistent. */
@@ -361,4 +362,15 @@ describe('import from the sample book', () => {
   it('rejects malformed XML', () => {
     expect(() => fromXml('<exercise><statement></exercise>')).toThrow(/not well-formed/)
   })
+})
+
+describe('samples', () => {
+  for (const [kind, xml] of Object.entries(exerciseSamples)) {
+    it(`${kind} imports cleanly and round-trips`, () => {
+      const { exercise, warnings } = fromXml(xml)
+      expect(exercise.body.kind).toBe(kind)
+      expect(warnings).toEqual([])
+      expect(normalizeIds(fromXml(toXml(exercise)).exercise)).toEqual(normalizeIds(exercise))
+    })
+  }
 })

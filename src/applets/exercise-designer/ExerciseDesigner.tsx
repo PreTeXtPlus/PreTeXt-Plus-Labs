@@ -11,9 +11,10 @@ import MultipleChoiceForm from './forms/MultipleChoiceForm.tsx'
 import ParsonsForm from './forms/ParsonsForm.tsx'
 import ShortAnswerForm from './forms/ShortAnswerForm.tsx'
 import TrueFalseForm from './forms/TrueFalseForm.tsx'
-import { kindLabels, kinds, type BodyOf, type Common, type Kind } from './model.ts'
+import { kindLabels, kinds, type BodyOf, type Common, type Exercise, type Kind } from './model.ts'
 import { fromXml } from './parse.ts'
 import Preview from './Preview.tsx'
+import { samples } from './samples.ts'
 import { toXml } from './serialize.ts'
 import { emptyDraft, useDraft } from './useDraft.ts'
 
@@ -81,15 +82,27 @@ export default function ExerciseDesigner() {
     (body: BodyOf<K>) =>
       setDraft((d) => ({ ...d, bodies: { ...d.bodies, [k]: body } }))
 
+  /** Replace the current draft's common fields, and its type's body, with this exercise. */
+  const loadExercise = ({ common, body }: Exercise, warnings: string[] = []) => {
+    setDraft((d) => ({ kind: body.kind, common, bodies: { ...d.bodies, [body.kind]: body } }))
+    setWarnings(warnings)
+  }
+
   const importXml = (src: string) => {
     try {
       const { exercise, warnings } = fromXml(src)
-      const k = exercise.body.kind
-      setDraft((d) => ({ kind: k, common: exercise.common, bodies: { ...d.bodies, [k]: exercise.body } }))
-      setWarnings(warnings)
+      loadExercise(exercise, warnings)
       return null
     } catch (e) {
       return e instanceof Error ? e.message : String(e)
+    }
+  }
+
+  const loadSample = () => {
+    const empty = emptyDraft()
+    const isEmpty = xml === toXml({ common: empty.common, body: empty.bodies[kind] })
+    if (isEmpty || confirm(`Replace the current exercise with the ${kindLabels[kind]} sample?`)) {
+      loadExercise(fromXml(samples[kind]).exercise)
     }
   }
 
@@ -175,6 +188,9 @@ export default function ExerciseDesigner() {
           ))}
         </div>
         <div className="flex gap-2">
+          <button type="button" className={buttonClass} onClick={loadSample}>
+            Load sample
+          </button>
           <button type="button" className={buttonClass} onClick={() => importRef.current?.showModal()}>
             Import XML
           </button>
