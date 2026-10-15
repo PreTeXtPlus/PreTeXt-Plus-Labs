@@ -66,7 +66,7 @@ function ImportDialog({ dialogRef, onImport }: { dialogRef: React.RefObject<HTML
 
 export default function ExerciseDesigner() {
   const [draft, setDraft] = useDraft()
-  const [tab, setTab] = useState<'xml' | 'preview'>('xml')
+  const [tab, setTab] = useState<'xml' | 'preview'>('preview')
   const [copied, setCopied] = useState(false)
   const [warnings, setWarnings] = useState<string[]>([])
   const statementRef = useRef<HTMLTextAreaElement>(null)
@@ -208,9 +208,6 @@ export default function ExerciseDesigner() {
           <div className="rounded-lg border border-slate-200 bg-white">
             <div className="flex items-center justify-between border-b border-slate-200 px-2">
               <div role="tablist" className="flex">
-                <button type="button" role="tab" aria-selected={tab === 'xml'} className={tabClass(tab === 'xml')} onClick={() => setTab('xml')}>
-                  XML
-                </button>
                 <button
                   type="button"
                   role="tab"
@@ -220,17 +217,20 @@ export default function ExerciseDesigner() {
                 >
                   Preview
                 </button>
+                <button type="button" role="tab" aria-selected={tab === 'xml'} className={tabClass(tab === 'xml')} onClick={() => setTab('xml')}>
+                  XML
+                </button>
               </div>
-              {tab === 'xml' && (
-                <div className="flex gap-2 py-1.5">
-                  <button type="button" className={buttonClass} onClick={copy}>
-                    {copied ? 'Copied!' : 'Copy'}
-                  </button>
+              <div className="flex gap-2 py-1.5">
+                <button type="button" className={buttonClass} onClick={copy}>
+                  {copied ? 'Copied!' : 'Copy XML'}
+                </button>
+                {tab === 'xml' && (
                   <button type="button" className={buttonClass} onClick={download}>
                     Download
                   </button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
             <div className={tab === 'xml' ? 'max-h-[75vh] overflow-auto p-4' : 'p-3'}>
               {tab === 'xml' ? <pre className="font-mono text-xs leading-relaxed whitespace-pre">{xml}</pre> : <Preview xml={xml} />}
