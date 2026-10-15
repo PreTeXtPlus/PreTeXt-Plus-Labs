@@ -12,7 +12,7 @@ import {
 import { BLOCK_START, FILLIN_RE } from './serialize.ts'
 
 const EXERCISE_LIKE = ['exercise', 'project', 'activity', 'exploration', 'investigation']
-const COMMON_TAGS = ['title', 'idx', 'statement', 'hint', 'answer', 'solution']
+const COMMON_TAGS = ['title', 'statement', 'hint', 'answer', 'solution']
 
 const elements = (node: Element, tag?: string) =>
   Array.from(node.children).filter((c) => !tag || c.tagName === tag)
@@ -330,9 +330,6 @@ export function fromXml(src: string): { exercise: Exercise; warnings: string[] }
     ...emptyCommon(),
     title: child(ex, 'title') ? inner(child(ex, 'title')!) : '',
     label: ex.getAttribute('label') ?? '',
-    index: elements(ex, 'idx')
-      .map((idx) => inner(idx).replace(/\s+/g, ' '))
-      .join('\n'),
     statement: statementText,
     hints: elements(ex, 'hint').map((h) => ({ id: newId(), text: innerMarkup(h) })),
     answer: innerMarkup(answers[0]),

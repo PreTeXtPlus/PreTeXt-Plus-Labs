@@ -39,8 +39,6 @@ export interface Hint {
 export interface Common {
   title: string
   label: string
-  /** One <idx> entry per line (markup, so <h> subentries work). */
-  index: string
   statement: string
   hints: Hint[]
   answer: string
@@ -225,7 +223,6 @@ export interface Exercise {
 export const emptyCommon = (): Common => ({
   title: '',
   label: '',
-  index: '',
   statement: '',
   hints: [],
   answer: '',

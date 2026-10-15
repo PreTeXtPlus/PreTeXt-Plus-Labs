@@ -319,10 +319,6 @@ export function toXml({ common: c, body: b }: Exercise): string {
     'exercise',
     { label: nonEmpty(c.label), ...attrs },
     c.title.trim() ? inline('title', c.title) : null,
-    ...c.index
-      .split('\n')
-      .filter((line) => line.trim())
-      .map((line) => inline('idx', line)),
     statementNode(c, b),
     ...afterStatement,
     ...c.hints.map((h) => optMarkup('hint', h.text)),

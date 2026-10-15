@@ -29,7 +29,6 @@ const common = {
   ...emptyCommon(),
   title: 'A <m>2 \\times 2</m> example',
   label: 'ex-sample',
-  index: 'vector space\n<h>matching</h><h>playing cards</h>',
   statement: 'First paragraph with <c>code</c>.\n\nSecond paragraph.',
   hints: [{ id: 'h1', text: 'Think about <em>it</em>.' }],
   answer: '<md>\n  <mrow>x = 1</mrow>\n</md>',
@@ -278,10 +277,9 @@ const importBody = <K extends Kind>(name: string, kind: K) => {
 
 describe('import from the sample book', () => {
   it('true/false', () => {
-    const { body, common, warnings } = importBody('truefalse', 'truefalse')
+    const { body, warnings } = importBody('truefalse', 'truefalse')
     expect(body.correct).toBe(false)
-    expect(common.index).toBe('vector space')
-    expect(warnings).toEqual([])
+    expect(warnings).toEqual(['Dropped unsupported <idx> element.'])
   })
 
   it('multiple choice with checkboxes', () => {
@@ -341,8 +339,7 @@ describe('import from the sample book', () => {
   })
 
   it('matching', () => {
-    const { body, common } = importBody('matching', 'matching')
-    expect(common.index).toBe('<h>matching</h><h>playing cards</h>')
+    const { body } = importBody('matching', 'matching')
     const text = new Map(body.responses.map((r) => [r.id, r.text]))
     expect(body.premises.map((p) => [p.text, p.refs.map((id) => text.get(id))])).toEqual([
       ['Jack of Hearts', ['Jack', 'Heart']],
