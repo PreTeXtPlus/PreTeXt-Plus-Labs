@@ -8,7 +8,7 @@ export default function AppletPage({ applet }: { applet: Applet }) {
   return (
     <article>
       <Link to="/" className="text-sm text-indigo-600 hover:underline">
-        ← All labs
+        ← More experiments
       </Link>
       <h1 className="mt-2 text-3xl font-bold">{applet.title}</h1>
       <p className="mt-1 text-slate-600">{applet.description}</p>

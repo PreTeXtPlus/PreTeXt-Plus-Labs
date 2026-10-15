@@ -4,7 +4,7 @@ import { applets } from '../applets/registry.ts'
 export default function Home() {
   return (
     <>
-      <h1 className="text-3xl font-bold">Labs</h1>
+      <h1 className="text-3xl font-bold">Experiments</h1>
       <p className="mt-1 text-slate-600">Experiemental apps for use with PreTeXt-related projects.</p>
       <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {applets.map((applet) => (
