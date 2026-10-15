@@ -5,4 +5,6 @@ import { defineConfig } from 'vite'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // @pretextbook/pretext-html's WASM worker uses top-level await.
+  worker: { format: 'es' },
 })

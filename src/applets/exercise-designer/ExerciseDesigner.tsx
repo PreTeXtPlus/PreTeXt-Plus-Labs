@@ -226,7 +226,7 @@ export default function ExerciseDesigner() {
                 </div>
               )}
             </div>
-            <div className="max-h-[75vh] overflow-auto p-4">
+            <div className={tab === 'xml' ? 'max-h-[75vh] overflow-auto p-4' : 'p-3'}>
               {tab === 'xml' ? <pre className="font-mono text-xs leading-relaxed whitespace-pre">{xml}</pre> : <Preview xml={xml} />}
             </div>
           </div>
