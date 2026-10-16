@@ -6,7 +6,8 @@ export default function Layout() {
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto max-w-5xl px-4 py-4">
           <Link to="/" className="text-xl font-bold tracking-tight flex items-center gap-2">
-            <img src="/public/icon.svg" alt="icon" className="size-10"/>
+            {/* Files in public/ are served from the site root (under the configured base URL). */}
+            <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" className="size-10" />
             <span>PreTeXt.Plus <span className="text-indigo-600">Labs</span></span>
           </Link>
         </div>
