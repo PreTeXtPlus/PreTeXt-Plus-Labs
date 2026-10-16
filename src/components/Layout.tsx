@@ -5,8 +5,9 @@ export default function Layout() {
     <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900">
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto max-w-5xl px-4 py-4">
-          <Link to="/" className="text-xl font-bold tracking-tight">
-            PreTeXt.Plus <span className="text-indigo-600">Labs</span>
+          <Link to="/" className="text-xl font-bold tracking-tight flex items-center gap-2">
+            <img src="/public/icon.svg" alt="icon" className="size-10"/>
+            <span>PreTeXt.Plus <span className="text-indigo-600">Labs</span></span>
           </Link>
         </div>
       </header>
