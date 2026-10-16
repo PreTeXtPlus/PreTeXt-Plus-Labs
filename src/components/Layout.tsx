@@ -15,7 +15,8 @@ export default function Layout() {
         <Outlet />
       </main>
       <footer className="border-t border-slate-200 py-4 text-center text-sm text-slate-500">
-        Experimental tools for PreTeXt-related projects
+        Experimental tools for PreTeXt-related projects |
+        Brought to you by <a href="https://pretext.plus" className="hover:underline text-purple-800">PreTeXt.Plus</a>
       </footer>
     </div>
   )
