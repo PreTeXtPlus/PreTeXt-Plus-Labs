@@ -23,7 +23,7 @@ export const kindLabels: Record<Kind, string> = {
   clickable: 'Clickable Area',
   fillin: 'Fill-in-the-Blanks',
   coding: 'Coding',
-  shortanswer: 'Short Answer',
+  shortanswer: 'Free Response',
 }
 
 export const LANGUAGES = ['python', 'javascript', 'java', 'c', 'cpp', 'sql', 'html', 'octave', 'ruby']
