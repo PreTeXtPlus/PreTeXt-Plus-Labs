@@ -8,10 +8,13 @@ export const kinds = [
   'clickable',
   'fillin',
   'coding',
-  // 'shortanswer',
+  'shortanswer',
 ] as const
 
 export type Kind = (typeof kinds)[number]
+
+/** Kinds not yet offered in the type picker (still parsed and serialized). */
+export const hiddenKinds: readonly Kind[] = ['shortanswer']
 
 export const kindLabels: Record<Kind, string> = {
   truefalse: 'True/False',
@@ -23,7 +26,7 @@ export const kindLabels: Record<Kind, string> = {
   clickable: 'Clickable Area',
   fillin: 'Fill-in-the-Blanks',
   coding: 'Coding',
-  // shortanswer: 'Free Response',
+  shortanswer: 'Free Response',
 }
 
 export const LANGUAGES = ['python', 'javascript', 'java', 'c', 'cpp', 'sql', 'html', 'octave', 'ruby']
@@ -315,5 +318,5 @@ export const emptyBodies = (): Bodies => ({
   clickable: { kind: 'clickable', code: false, language: '', content: '', feedback: '' },
   fillin: { kind: 'fillin', blanks: [] },
   coding: { kind: 'coding', language: 'python', code: '', tests: '' },
-  // shortanswer: { kind: 'shortanswer', attachment: false },
+  shortanswer: { kind: 'shortanswer', attachment: false },
 })

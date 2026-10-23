@@ -11,7 +11,7 @@ import MultipleChoiceForm from './forms/MultipleChoiceForm.tsx'
 import ParsonsForm from './forms/ParsonsForm.tsx'
 import ShortAnswerForm from './forms/ShortAnswerForm.tsx'
 import TrueFalseForm from './forms/TrueFalseForm.tsx'
-import { kindLabels, kinds, type BodyOf, type Common, type Exercise, type Kind } from './model.ts'
+import { hiddenKinds, kindLabels, kinds, type BodyOf, type Common, type Exercise, type Kind } from './model.ts'
 import { fromXml } from './parse.ts'
 import Preview from './Preview.tsx'
 import { samples } from './samples.ts'
@@ -172,7 +172,7 @@ export default function ExerciseDesigner() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div role="radiogroup" aria-label="Exercise type" className="flex flex-wrap gap-1.5">
-          {kinds.map((k) => (
+          {kinds.filter((k) => k === kind || !hiddenKinds.includes(k)).map((k) => (
             <button
               key={k}
               type="button"
