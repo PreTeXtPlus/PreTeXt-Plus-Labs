@@ -27,4 +27,10 @@ export const applets: Applet[] = [
     description: 'Author the content of PreTeXt interactive exercises and export the XML.',
     component: lazy(() => import('./exercise-designer/ExerciseDesigner.tsx')),
   },
+  {
+    slug: 'latex-image',
+    title: 'LaTeX Image',
+    description: 'Author LaTeX and TikZ, preview it with TikZJax, and export SVG or PreTeXt <latex-image> markup.',
+    component: lazy(() => import('./latex-image/LatexImageDesigner.tsx')),
+  },
 ]
