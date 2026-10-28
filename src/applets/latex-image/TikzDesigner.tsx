@@ -3,11 +3,11 @@ import { buttonClass, Checkbox, Field, inputClass, Section, TextInput } from '..
 import { availablePackages, emptyImage, environmentNames, samples, type TikzImage } from './model.ts'
 import { preambleXml, splitEnvironment, toPretext } from './serialize.ts'
 import TikzPreview from './TikzPreview.tsx'
-import { standaloneSvg } from './tikzjax.ts'
+import { pngBlob, standaloneSvg } from './tikzjax.ts'
 import { useDraft } from './useDraft.ts'
 
-function save(content: string, type: string, filename: string) {
-  const url = URL.createObjectURL(new Blob([content], { type }))
+function save(content: Blob, filename: string) {
+  const url = URL.createObjectURL(content)
   const a = document.createElement('a')
   a.href = url
   a.download = filename
@@ -48,7 +48,16 @@ export default function TikzDesigner() {
   }
 
   const downloadSvg = async () => {
-    if (svg) save(await standaloneSvg(svg), 'image/svg+xml', `${basename}.svg`)
+    if (svg) save(new Blob([await standaloneSvg(svg)], { type: 'image/svg+xml' }), `${basename}.svg`)
+  }
+
+  const downloadPng = async () => {
+    if (!svg) return
+    try {
+      save(await pngBlob(svg), `${basename}.png`)
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e))
+    }
   }
 
   const tabClass = (active: boolean) =>
@@ -163,15 +172,20 @@ export default function TikzDesigner() {
               </div>
               <div className="flex gap-2 py-1.5">
                 {tab === 'preview' ? (
-                  <button type="button" className={buttonClass} onClick={downloadSvg} disabled={!svg}>
-                    Download SVG
-                  </button>
+                  <>
+                    <button type="button" className={buttonClass} onClick={downloadSvg} disabled={!svg}>
+                      Download SVG
+                    </button>
+                    <button type="button" className={buttonClass} onClick={downloadPng} disabled={!svg} title="300 DPI, transparent background">
+                      Download PNG
+                    </button>
+                  </>
                 ) : (
                   <>
                     <button type="button" className={buttonClass} onClick={copy}>
                       {copied ? 'Copied!' : 'Copy XML'}
                     </button>
-                    <button type="button" className={buttonClass} onClick={() => save(xml + '\n', 'application/xml', `${basename}.ptx`)}>
+                    <button type="button" className={buttonClass} onClick={() => save(new Blob([xml + '\n'], { type: 'application/xml' }), `${basename}.ptx`)}>
                       Download
                     </button>
                   </>

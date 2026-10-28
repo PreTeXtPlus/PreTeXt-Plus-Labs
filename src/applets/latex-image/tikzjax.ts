@@ -59,3 +59,30 @@ export async function standaloneSvg(svg: SVGSVGElement): Promise<string> {
   }
   return `<?xml version="1.0" encoding="UTF-8"?>\n${new XMLSerializer().serializeToString(copy)}\n`
 }
+
+/** Points (TikZJax sizes its SVGs in pt) at 300 DPI. */
+const PX_PER_PT = 300 / 72
+
+/** The rendered image as a 300 DPI PNG with a transparent background. */
+export async function pngBlob(svg: SVGSVGElement): Promise<Blob> {
+  const width = Math.ceil(parseFloat(svg.getAttribute('width') ?? '') * PX_PER_PT)
+  const height = Math.ceil(parseFloat(svg.getAttribute('height') ?? '') * PX_PER_PT)
+  if (!(width > 0 && height > 0)) throw new Error('The image has no size.')
+
+  // Rasterize the standalone SVG, so its embedded fonts are used.
+  const url = URL.createObjectURL(new Blob([await standaloneSvg(svg)], { type: 'image/svg+xml' }))
+  try {
+    const img = new Image()
+    img.src = url
+    await img.decode()
+    const canvas = document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+    canvas.getContext('2d')!.drawImage(img, 0, 0, width, height)
+    return await new Promise((resolve, reject) =>
+      canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('Could not create the PNG.'))), 'image/png'),
+    )
+  } finally {
+    URL.revokeObjectURL(url)
+  }
+}
