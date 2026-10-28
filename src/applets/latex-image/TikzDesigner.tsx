@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { buttonClass, Checkbox, Field, inputClass, Section, TextInput } from '../exercise-designer/components/fields.tsx'
-import { availablePackages, emptyImage, sample, type LatexImage } from './model.ts'
-import { preambleXml, toPretext } from './serialize.ts'
+import { availablePackages, emptyImage, environmentNames, sample, type TikzImage } from './model.ts'
+import { preambleXml, splitEnvironment, toPretext } from './serialize.ts'
 import TikzPreview from './TikzPreview.tsx'
 import { standaloneSvg } from './tikzjax.ts'
 import { useDraft } from './useDraft.ts'
@@ -15,7 +15,7 @@ function save(content: string, type: string, filename: string) {
   URL.revokeObjectURL(url)
 }
 
-export default function LatexImageDesigner() {
+export default function TikzDesigner() {
   const [image, setImage] = useDraft()
   const [tab, setTab] = useState<'preview' | 'pretext'>('preview')
   const [svg, setSvg] = useState<SVGSVGElement | null>(null)
@@ -25,12 +25,12 @@ export default function LatexImageDesigner() {
   const docinfo = useMemo(() => preambleXml(image), [image])
   const basename = image.label.trim() || 'latex-image'
 
-  const set = (patch: Partial<LatexImage>) => setImage((img) => ({ ...img, ...patch }))
+  const set = (patch: Partial<TikzImage>) => setImage((img) => ({ ...img, ...patch }))
   const togglePackage = (p: string, on: boolean) =>
     setImage((img) => ({ ...img, packages: on ? [...img.packages, p] : img.packages.filter((q) => q !== p) }))
 
   const loadSample = () => {
-    if (!image.source.trim() || confirm('Replace the current image with the sample?')) setImage(sample())
+    if (!image.body.trim() || confirm('Replace the current image with the sample?')) setImage(sample())
   }
   const reset = () => {
     if (confirm('Clear the image and its settings?')) setImage(emptyImage())
@@ -66,16 +66,56 @@ export default function LatexImageDesigner() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="min-w-0 space-y-6">
-          <Section title="LaTeX">
-            <Field label="Source" help="The body of the image, usually a tikzpicture environment. TikZ is always loaded.">
-              <textarea
-                value={image.source}
-                rows={16}
-                spellCheck={false}
-                onChange={(e) => set({ source: e.target.value })}
-                placeholder={'\\begin{tikzpicture}\n  \\draw (0,0) circle (1);\n\\end{tikzpicture}'}
-                className={`${inputClass} font-mono`}
-              />
+          <Section title="TikZ">
+            <div role="radiogroup" aria-label="Environment" className="flex gap-1.5">
+              {environmentNames.map((env) => (
+                <button
+                  key={env}
+                  type="button"
+                  role="radio"
+                  aria-checked={env === image.environment}
+                  onClick={() => set({ environment: env })}
+                  className={`rounded-full border px-3 py-1 font-mono text-sm ${
+                    env === image.environment ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-slate-300 bg-white hover:bg-slate-100'
+                  }`}
+                >
+                  {env}
+                </button>
+              ))}
+            </div>
+            <TextInput
+              label="Options"
+              value={image.options}
+              onChange={(options) => set({ options })}
+              placeholder={image.environment === 'tikzcd' ? 'row sep=large' : 'scale=1.2, >=Stealth'}
+              mono
+              help={`The optional argument of \\begin{${image.environment}}[…].`}
+            />
+            <Field
+              label="Body"
+              help={
+                image.environment === 'tikzcd'
+                  ? 'Only the diagram’s rows. Pasting a whole tikzcd environment fills in the options too.'
+                  : 'Only TikZ commands: put macros under Other preamble. Pasting a whole tikzpicture fills in the options too.'
+              }
+            >
+              <div className="overflow-hidden rounded-md border border-slate-300 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-200">
+                <div className="bg-slate-50 px-2.5 py-1 font-mono text-sm text-slate-400 select-none">
+                  {`\\begin{${image.environment}}${image.options.trim() ? `[${image.options.trim()}]` : ''}`}
+                </div>
+                <textarea
+                  value={image.body}
+                  rows={14}
+                  spellCheck={false}
+                  onChange={(e) => {
+                    const parts = splitEnvironment(e.target.value)
+                    set(parts ?? { body: e.target.value })
+                  }}
+                  placeholder={image.environment === 'tikzcd' ? 'A \\arrow[r] & B' : '\\draw (0,0) circle (1);'}
+                  className="block w-full border-0 bg-white px-2.5 py-1.5 pl-6 font-mono text-sm focus:outline-none"
+                />
+                <div className="bg-slate-50 px-2.5 py-1 font-mono text-sm text-slate-400 select-none">{`\\end{${image.environment}}`}</div>
+              </div>
             </Field>
             <TextInput label="Label" value={image.label} onChange={(label) => set({ label })} mono help="Optional. Used for the label attribute and download filenames." />
           </Section>

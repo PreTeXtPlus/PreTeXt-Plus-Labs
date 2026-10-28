@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import type { LatexImage } from './model.ts'
-import { tikzjaxData } from './serialize.ts'
+import type { TikzImage } from './model.ts'
+import { environmentSource, tikzjaxData } from './serialize.ts'
 import { loadTikzjax } from './tikzjax.ts'
 
 const DEBOUNCE_MS = 600
@@ -19,13 +19,13 @@ function errorExcerpt(log: string) {
  * <script type="text/tikz"> it finds with an SVG, so the container's children
  * are managed here rather than by React.
  */
-export default function TikzPreview({ image, onSvg }: { image: LatexImage; onSvg: (svg: SVGSVGElement | null) => void }) {
+export default function TikzPreview({ image, onSvg }: { image: TikzImage; onSvg: (svg: SVGSVGElement | null) => void }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [status, setStatus] = useState<Status>({ state: 'loading' })
   // TikZJax compiles one image at a time; a newer edit waits for the current compile.
   const busy = useRef(false)
-  const pending = useRef<LatexImage | null>(null)
-  const startRef = useRef<((img: LatexImage) => void) | null>(null)
+  const pending = useRef<TikzImage | null>(null)
+  const startRef = useRef<((img: TikzImage) => void) | null>(null)
   const onSvgRef = useRef(onSvg)
   useEffect(() => {
     onSvgRef.current = onSvg
@@ -70,14 +70,14 @@ export default function TikzPreview({ image, onSvg }: { image: LatexImage; onSvg
     }
     container.addEventListener('tikzjax-load-finished', onLoaded)
 
-    function start(img: LatexImage) {
+    function start(img: TikzImage) {
       busy.current = true
       log = []
       setStatus({ state: 'compiling' })
       const script = document.createElement('script')
       script.type = 'text/tikz'
       Object.assign(script.dataset, tikzjaxData(img), { showConsole: 'true' })
-      script.textContent = img.source
+      script.textContent = environmentSource(img)
       container.replaceChildren(script)
     }
 
@@ -97,7 +97,7 @@ export default function TikzPreview({ image, onSvg }: { image: LatexImage; onSvg
   }, [])
 
   useEffect(() => {
-    if (!image.source.trim()) {
+    if (!image.body.trim()) {
       containerRef.current?.replaceChildren()
       pending.current = null
       onSvgRef.current(null)
