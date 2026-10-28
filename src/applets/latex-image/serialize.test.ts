@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
 import { checkWellFormed } from '../exercise-designer/serialize.ts'
-import { emptyImage, sample } from './model.ts'
+import { emptyImage, samples } from './model.ts'
 import { environmentSource, preambleXml, splitEnvironment, tikzjaxData, toPretext } from './serialize.ts'
 
 describe('environmentSource', () => {
@@ -31,7 +31,8 @@ describe('toPretext', () => {
 
   it('includes a label only when set', () => {
     expect(toPretext({ ...emptyImage(), body: 'x', label: ' fig-1 ' })).toMatch(/^<latex-image label="fig-1">/)
-    expect(toPretext(sample())).toMatch(/^<latex-image label="parabola">\n\\begin\{tikzpicture\}\[scale=1.2\]\n {2}\\draw/)
+    expect(toPretext(samples.tikzpicture())).toMatch(/^<latex-image label="parabola">\n\\begin\{tikzpicture\}\[scale=1.2\]\n {2}\\draw/)
+    expect(toPretext(samples.tikzcd())).toMatch(/^<latex-image label="commutative-square">\n\\begin\{tikzcd\}\[column sep=large\]\n {2}A /)
   })
 })
 

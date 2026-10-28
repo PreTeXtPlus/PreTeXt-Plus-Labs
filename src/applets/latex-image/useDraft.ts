@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { emptyImage, environmentNames, sample, type TikzImage } from './model.ts'
+import { emptyImage, environmentNames, samples, type TikzImage } from './model.ts'
 
 // Bump the version when the model changes shape, so stale drafts are ignored.
 const KEY = 'latex-image:draft:v2'
@@ -11,7 +11,7 @@ function load(): TikzImage {
   } catch {
     // Storage unavailable or corrupt: start fresh.
   }
-  return sample()
+  return samples.tikzpicture()
 }
 
 export function useDraft() {

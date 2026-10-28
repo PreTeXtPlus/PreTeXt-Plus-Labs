@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { buttonClass, Checkbox, Field, inputClass, Section, TextInput } from '../exercise-designer/components/fields.tsx'
-import { availablePackages, emptyImage, environmentNames, sample, type TikzImage } from './model.ts'
+import { availablePackages, emptyImage, environmentNames, samples, type TikzImage } from './model.ts'
 import { preambleXml, splitEnvironment, toPretext } from './serialize.ts'
 import TikzPreview from './TikzPreview.tsx'
 import { standaloneSvg } from './tikzjax.ts'
@@ -30,7 +30,8 @@ export default function TikzDesigner() {
     setImage((img) => ({ ...img, packages: on ? [...img.packages, p] : img.packages.filter((q) => q !== p) }))
 
   const loadSample = () => {
-    if (!image.body.trim() || confirm('Replace the current image with the sample?')) setImage(sample())
+    if (!image.body.trim() || confirm(`Replace the current image with the ${image.environment} sample?`))
+      setImage(samples[image.environment]())
   }
   const reset = () => {
     if (confirm('Clear the image and its settings?')) setImage(emptyImage())

@@ -40,15 +40,26 @@ export const emptyImage = (): TikzImage => ({
   label: '',
 })
 
-export const sample = (): TikzImage => ({
-  ...emptyImage(),
-  options: 'scale=1.2',
-  body: String.raw`\draw[help lines, step=0.5] (-0.5,-0.5) grid (3.5,3);
+/** A sample image for each environment. */
+export const samples: Record<Environment, () => TikzImage> = {
+  tikzpicture: () => ({
+    ...emptyImage(),
+    options: 'scale=1.2',
+    body: String.raw`\draw[help lines, step=0.5] (-0.5,-0.5) grid (3.5,3);
 \draw[-Stealth] (-0.5,0) -- (3.5,0) node[right] {$x$};
 \draw[-Stealth] (0,-0.5) -- (0,3) node[above] {$y$};
 \draw[thick, blue, domain=-0.2:3, samples=50] plot (\x, {0.3*\x*\x});
 \node[blue, above left] at (3,2.7) {$y = 0.3x^2$};
 \fill[red] (1,0.3) circle (2pt) node[below right] {$(1, 0.3)$};`,
-  libraries: 'arrows.meta',
-  label: 'parabola',
-})
+    libraries: 'arrows.meta',
+    label: 'parabola',
+  }),
+  tikzcd: () => ({
+    ...emptyImage(),
+    environment: 'tikzcd',
+    options: 'column sep=large',
+    body: String.raw`A \arrow[r, "f"] \arrow[d, "h"'] & B \arrow[d, "g"] \\
+C \arrow[r, "k"'] & D`,
+    label: 'commutative-square',
+  }),
+}
