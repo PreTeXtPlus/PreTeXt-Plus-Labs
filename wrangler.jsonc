@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "pretext-plus-labs",
+  "compatibility_date": "2026-10-01",
+  // Production is served only at labs.pretext.plus…
+  "workers_dev": false,
+  "routes": [{ "pattern": "labs.pretext.plus", "custom_domain": true }],
+  // …but every preview build gets a shareable workers.dev link, which Cloudflare posts to the PR.
+  "preview_urls": true,
+  "assets": {
+    "directory": "./dist",
+    // React Router handles /apps/<slug> in the browser.
+    "not_found_handling": "single-page-application"
+  },
+  // Required by `wrangler preview` (preview builds); empty means previews use the settings above.
+  "previews": {}
+}

@@ -14,6 +14,8 @@ npm run lint
 npm test         # run unit tests (Vitest)
 ```
 
+The TikZ Image applet compiles TikZ in the browser with [TikZJax](https://github.com/drgrice1/tikzjax). Its files are served from `node_modules/@drgrice1/tikzjax/dist` at `/tikzjax/` (see `vite.config.ts`).
+
 ## Adding an applet
 
 1. Create `src/applets/<slug>/MyApplet.tsx` with a default-exported component.
