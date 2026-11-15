@@ -33,4 +33,10 @@ export const applets: Applet[] = [
     description: 'Author TikZ pictures, preview them with TikZJax, and export SVG or PreTeXt <latex-image> markup.',
     component: lazy(() => import('./latex-image/TikzDesigner.tsx')),
   },
+  {
+    slug: 'sage-notebook',
+    title: 'SageCell Notebooks',
+    description: 'Open, edit, download and share Jupyter notebooks whose code cells run on SageMathCell.',
+    component: lazy(() => import('./sage-notebook/SageNotebook.tsx')),
+  },
 ]

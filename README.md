@@ -16,6 +16,8 @@ npm test         # run unit tests (Vitest)
 
 The TikZ Image applet compiles TikZ in the browser with [TikZJax](https://github.com/drgrice1/tikzjax). Its files are served from `node_modules/@drgrice1/tikzjax/dist` at `/tikzjax/` (see `vite.config.ts`).
 
+The SageCell Notebooks applet runs code with [SageMathCell](https://sagecell.sagemath.org): it loads the embed script from `sagecell.sagemath.org` at run time, so it needs network access to that server.
+
 ## Adding an applet
 
 1. Create `src/applets/<slug>/MyApplet.tsx` with a default-exported component.
